@@ -42,4 +42,3 @@ gdb.events.new_objfile.connect(new_objfile_handler)
 
 import rsp
 import rsp.cmd
-import rsp.mem as mem
