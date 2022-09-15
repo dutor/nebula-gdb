@@ -44,7 +44,7 @@ def x(addr, fmt, n = 1):
         mview = inferior.read_memory(addr, struct.calcsize(fmt) * n)
         return mview.cast(fmt).tolist()
     except:
-        raise ValueError("Failed to read %d elements from 0x%x in '%s' format" % (n, addr, fmt))
+        raise ValueError(f"Failed to read {n} objects in '{fmt}' format at {addr:#x}")
 
 def reg(regname):
     try:
@@ -165,11 +165,11 @@ def is_str_at_addr(addr):
         if not is_valid_addr(s):
             break
         c = x(s, 'c')[0]
-        if ord(c) < 0x21 or ord(c) > 0x7e:
+        if ord(c) < 0x20 or ord(c) > 0x7e:
             break
         n = n + 1
         s = s + 1
-    return n > 3, n
+    return n > 2, n
 
 
 if 'rsp.cmd' in sys.modules:

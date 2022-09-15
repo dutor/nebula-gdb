@@ -44,7 +44,7 @@ class ShowStackCommand(gdb.Command):
             top = reg('rsp')
         elif is_arm64():
             top = reg('sp')
-        print("bottom: 0x%x, top: 0x%x, size: %d, usage: %d" % (end, top, end - start, end - top))
+        print(f"bottom: {end:#x}, top: {top:#x}, size: {end-start}, usage: {end-top}")
 
 ShowStackCommand()
 
@@ -99,7 +99,7 @@ class ExamineRangeCommand(gdb.Command):
                 if n > 64:
                     n = 64
                     tail = '...'
-                print('0x%x: %s' % (addr, ''.join(c.decode() for c in x(addr, 'c', n)) + tail))
+                print('0x%x: "%s"' % (addr, ''.join(c.decode() for c in x(addr, 'c', n)) + tail))
             if not 'No symbol' in out:
                 try:
                     if not hasattr(gdb, 'symbol_line_pattern'):
@@ -128,7 +128,10 @@ class ExamineStackCommand(gdb.Command):
     @catch
     def invoke(self, args, is_tty):
         start, end = stack_range()
-        top = reg('rsp')
+        if is_x64():
+            top = reg('rsp')
+        elif is_arm64():
+            top = reg('sp')
         bottom = end
         gdb.execute('xrange %d %d' % (top, bottom))
 
@@ -285,3 +288,35 @@ REGISTERS
         print(tips.strip())
 
 ShowAssemblyTipsCommand()
+
+
+class PrintStdStringCommand(gdb.Command):
+    '''Print fields of std::string, useful if debuginfo absent'''
+    def __init__(self):
+        super(PrintStdStringCommand, self).__init__('pstr', gdb.COMMAND_USER)
+
+    @catch
+    def invoke(self, args, is_tty):
+        args = args.split()
+        if len(args) != 1:
+            print('pstr <addr>')
+            return
+        addr = int(gdb.parse_and_eval(args[0]))
+        buf, size, cap = x(addr, 'Q', 3)
+        sso = buf == addr + 16
+        if sso:
+            cap = 15
+        print(f'cap: {cap}, size: {size}, buf: {buf:#x}, sso: {sso}')
+
+PrintStdStringCommand()
+
+
+class PrintStdVectorCommand(gdb.Command):
+    '''Print fields of std::vector, useful if debuginfo absent'''
+    def __init__(self):
+        super(PrintStdVectorCommand, self).__init__('pvec', gdb.COMMAND_USER)
+
+    def invoke(self, args, is_tty):
+        pass
+
+PrintStdVectorCommand()
