@@ -291,7 +291,7 @@ ShowAssemblyTipsCommand()
 
 
 class PrintStdStringCommand(gdb.Command):
-    '''Print fields of std::string, useful if debuginfo absent'''
+    '''Print fields of std::string, useful if no debuginfo'''
     def __init__(self):
         super(PrintStdStringCommand, self).__init__('pstr', gdb.COMMAND_USER)
 
@@ -301,7 +301,12 @@ class PrintStdStringCommand(gdb.Command):
         if len(args) != 1:
             print('pstr <addr>')
             return
-        addr = int(gdb.parse_and_eval(args[0]))
+        value = gdb.parse_and_eval(args[0])
+        tcode = value.type.code
+        if tcode == gdb.TYPE_CODE_PTR or tcode == gdb.TYPE_CODE_INT:
+            addr = int(value)
+        else:
+            addr = int(value.address)
         buf, size, cap = x(addr, 'Q', 3)
         sso = buf == addr + 16
         if sso:
@@ -312,11 +317,24 @@ PrintStdStringCommand()
 
 
 class PrintStdVectorCommand(gdb.Command):
-    '''Print fields of std::vector, useful if debuginfo absent'''
+    '''Print fields of std::vector, useful if no debuginfo'''
     def __init__(self):
         super(PrintStdVectorCommand, self).__init__('pvec', gdb.COMMAND_USER)
 
+    @catch
     def invoke(self, args, is_tty):
+        args = args.split()
+        if len(args) != 1:
+            print('pvec <addr>')
+            return
+        value = gdb.parse_and_eval(args[0])
+        tcode = value.type.code
+        if tcode == gdb.TYPE_CODE_PTR or tcode == gdb.TYPE_CODE_INT:
+            addr = int(value)
+        else:
+            addr = int(value.address)
+        s, e, f = x(addr, 'Q', 3)
+        print(f'start: {s:#x}, size: +{e-s}, cap: +{f-s}')
         pass
 
 PrintStdVectorCommand()
