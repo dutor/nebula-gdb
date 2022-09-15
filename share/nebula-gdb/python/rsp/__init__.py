@@ -25,11 +25,11 @@ def is_active():
 
 # gdb a.out core.PID
 def is_exited():
-    if (not is_active()):
+    if not is_active():
         return False
 
     sig = gdb.parse_and_eval('$_exitsignal')
-    if (sig.type.code == gdb.TYPE_CODE_INT):
+    if sig.type.code == gdb.TYPE_CODE_INT:
         return True
 
     return False
@@ -39,13 +39,19 @@ def is_running():
     return is_active() and not is_exited()
 
 def x(addr, fmt, n = 1):
-    inferior = gdb.selected_inferior()
-    mview = inferior.read_memory(addr, struct.calcsize(fmt) * n)
-    return mview.cast(fmt).tolist()
+    try:
+        inferior = gdb.selected_inferior()
+        mview = inferior.read_memory(addr, struct.calcsize(fmt) * n)
+        return mview.cast(fmt).tolist()
+    except:
+        raise ValueError("Failed to read %d elements from 0x%x in '%s' format" % (n, addr, fmt))
 
 def reg(regname):
-    v = gdb.selected_frame().read_register(regname)
-    return int(v)
+    try:
+        v = gdb.selected_frame().read_register(regname)
+        return int(v)
+    except:
+        raise ValueError(f'Failed to read register ${regname}')
 
 def tid():
     if is_x64():
@@ -59,8 +65,6 @@ def pid():
     return gdb.selected_inferior().pid
 
 def is_main_thread():
-    if not is_active():
-        raise ValueError('No active inferior')
     return tid() == pid()
 
 def is_x64():
@@ -79,18 +83,21 @@ def arch():
 
 def stack_range():
     if not is_main_thread():
-        if is_x64():
-            base, size, guard_size = x(reg('fs_base') + 1680, 'Q', 3)
-            bottom = base + size
-            base = base + guard_size
-            return base, bottom
-        elif is_arm64():
-            base, size, guard_size = x(int(gdb.parse_and_eval('pthread_self()')) + 1168, 'Q', 3)
-            bottom = base + size
-            base = base + guard_size
-            return base, bottom
-        else:
-            raise ValueError('Cannot retrieve stack')
+        try:
+            if is_x64():
+                base, size, guard_size = x(reg('fs_base') + 1680, 'Q', 3)
+                bottom = base + size
+                base = base + guard_size
+                return base, bottom
+            elif is_arm64():
+                base, size, guard_size = x(int(gdb.parse_and_eval('pthread_self()')) + 1168, 'Q', 3)
+                bottom = base + size
+                base = base + guard_size
+                return base, bottom
+            else:
+                raise ValueError('Cannot retrieve stack range')
+        except:
+            raise ValueError('Cannot retrieve stack range')
 
     try:
         sym = gdb.lookup_global_symbol('__libc_stack_end')
@@ -99,7 +106,7 @@ def stack_range():
         base = bottom - resource.getrlimit(resource.RLIMIT_STACK)[0]
         return base, bottom
     except:
-        pass
+        raise ValueError('Cannot retrieve stack range')
 
 
 def __load_from_core():
@@ -134,9 +141,6 @@ def __load_from_proc():
         gdb.mmaps.append((b, e))
 
 def load_memory_space():
-    if not is_active():
-        return
-
     if len(gdb.mmaps) != 0:
         return
 
@@ -165,7 +169,7 @@ def is_str_at_addr(addr):
             break
         n = n + 1
         s = s + 1
-    return n > 2, n
+    return n > 3, n
 
 
 if 'rsp.cmd' in sys.modules:

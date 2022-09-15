@@ -13,22 +13,33 @@ class ReloadCommand(gdb.Command):
 
 ReloadCommand()
 
+def active(invoke):
+    def wrapper(*args, **kwargs):
+        if not is_active():
+            print('No active inferior to debug')
+            return
+        invoke(*args, **kwargs)
+
+    return wrapper
+
+def catch(invoke):
+    def wrapper(*args, **kwargs):
+        try:
+            invoke(*args, **kwargs)
+        except Exception as e:
+            print(e)
+
+    return wrapper
+
 class ShowStackCommand(gdb.Command):
     '''Show various info about the current stack'''
     def __init__(self):
         super(ShowStackCommand, self).__init__("show-stack-info", gdb.COMMAND_USER)
 
+    @active
+    @catch
     def invoke(self, args, is_tty):
-        if (not is_active()):
-            print("No active progress")
-            return
-
-        try:
-            start, end = stack_range()
-        except:
-            print("Can't retrieve the stack")
-            return
-
+        start, end = stack_range()
         if is_x64():
             top = reg('rsp')
         elif is_arm64():
@@ -43,20 +54,23 @@ class ExamineRangeCommand(gdb.Command):
     def __init__(self):
         super(ExamineRangeCommand, self).__init__('xrange', gdb.COMMAND_USER)
 
+    @active
+    @catch
     def invoke(self, args, is_tty):
-        if not is_active():
-            print('No active process')
-            return
-
         args = args.split()
         if len(args) != 2:
             print('xrange <start> <end>')
             return
         try:
             start = int(gdb.parse_and_eval(args[0]))
+        except:
+            print(f"'{args[0]}': cannot be evaluated to a valid address")
+            return
+
+        try:
             end = int(gdb.parse_and_eval(args[1]))
         except:
-            print('Invalid address')
+            print(f"'{args[1]}': cannot be evaluated to a valid address")
             return
 
         start, end = (start & ~0x7), (end & ~0x7)
@@ -65,8 +79,12 @@ class ExamineRangeCommand(gdb.Command):
         if end - start < 8:
             return
 
-        if not is_valid_addr(start) or not is_valid_addr(end - 1):
-            print('Invalid address')
+        if not is_valid_addr(start):
+            print('Memory cannot be accessed at 0x%x' % start)
+            return
+
+        if not is_valid_addr(end - 1):
+            print('Memory cannot be accessed at 0x%x' % (end - 1))
             return
 
         addrs = x(start, 'Q', (end - start) / 8)
@@ -96,8 +114,7 @@ class ExamineRangeCommand(gdb.Command):
                     else:
                         print('0x%x: <%s+%d>' % (addr, func, int(offset)))
                 except:
-                    print(out)
-                    print(len(out))
+                    raise
 
 ExamineRangeCommand()
 
@@ -107,20 +124,12 @@ class ExamineStackCommand(gdb.Command):
     def __init__(self):
         super(ExamineStackCommand, self).__init__('xstack', gdb.COMMAND_USER)
 
+    @active
+    @catch
     def invoke(self, args, is_tty):
-        if not is_active():
-            print('No active process')
-            return
-
-        try:
-            start, end = stack_range()
-        except:
-            print("Can't retrieve the stack")
-            return
-
+        start, end = stack_range()
         top = reg('rsp')
         bottom = end
-
         gdb.execute('xrange %d %d' % (top, bottom))
 
 ExamineStackCommand()
@@ -130,6 +139,7 @@ class ShowAssemblyTipsCommand(gdb.Command):
     def __init__(self):
         super(ShowAssemblyTipsCommand, self).__init__('show-asm-tips', gdb.COMMAND_USER)
 
+    @catch
     def invoke(self, args, is_tty):
         if args == 'arm':
             self.show_arm_tips()
