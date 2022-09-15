@@ -50,6 +50,8 @@ def pid():
     return gdb.selected_inferior().pid
 
 def is_main_thread():
+    if not is_active():
+        raise ValueError('No active inferior')
     return tid() == pid()
 
 def is_x64():
@@ -68,10 +70,18 @@ def arch():
 
 def stack_range():
     if not is_main_thread():
-        base, size, guard_size = x(reg('fs_base') + 1680, 'Q', 3)
-        bottom = base + size
-        base = base + guard_size
-        return base, bottom
+        if is_x64():
+            base, size, guard_size = x(reg('fs_base') + 1680, 'Q', 3)
+            bottom = base + size
+            base = base + guard_size
+            return base, bottom
+        elif is_arm64():
+            base, size, guard_size = x(int(gdb.parse_and_eval('pthread_self()')) + 1168, 'Q', 3)
+            bottom = base + size
+            base = base + guard_size
+            return base, bottom
+        else:
+            raise ValueError('Cannot retrieve stack')
 
     try:
         sym = gdb.lookup_global_symbol('__libc_stack_end')

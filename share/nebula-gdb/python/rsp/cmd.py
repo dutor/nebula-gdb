@@ -18,7 +18,10 @@ class ShowStackCommand(gdb.Command):
             print("Can't retrieve the stack")
             return
 
-        top = reg('rsp')
+        if is_x64():
+            top = reg('rsp')
+        elif is_arm64():
+            top = reg('sp')
         print("bottom: 0x%x, top: 0x%x, size: %d, usage: %d" % (end, top, end - start, end - top))
 
 
@@ -118,7 +121,7 @@ class ShowAssemblyTipsCommand(gdb.Command):
 
         if is_x64():
             self.show_x86_tips()
-        elif is_arm():
+        elif is_arm64():
             self.show_arm_tips()
 
     def show_arm_tips(self):
