@@ -151,18 +151,18 @@ MEMORY ACCESS
 
 BRANCH INSTRUCTIONS
     Given `cmp x0, x1'
-    bl:                         branch and save return address to x30
-    b.eq:                       if x0 == x1
-    b.ne:                       if x0 != x1
-    b.lt:                       if x0 < x1
-    b.le:                       if x0 <= x1
-    b.gt:                       if x0 > x1
-    b.ge:                       if x0 >= x1
-    b.hi:                       if x0 > x1, for unsigned
-    b.lo:                       if x0 < x1, for unsigned
-    blr x0:                     branch to address in x0
-    cbz x0:                     branch if x0 == 0
-    cbnz x0:                    branch if x0 != 0
+    bl:                             branch and save return address to x30
+    b.eq:                           if x0 == x1
+    b.ne:                           if x0 != x1
+    b.lt:                           if x0 < x1
+    b.le:                           if x0 <= x1
+    b.gt:                           if x0 > x1
+    b.ge:                           if x0 >= x1
+    b.hi:                           if x0 > x1, for unsigned
+    b.lo:                           if x0 < x1, for unsigned
+    blr x0:                         branch to address in x0
+    cbz x0:                         branch if x0 == 0
+    cbnz x0:                        branch if x0 != 0
 
 DEMO
 class Base {
