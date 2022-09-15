@@ -41,4 +41,3 @@ def new_objfile_handler(ev):
 gdb.events.new_objfile.connect(new_objfile_handler)
 
 import rsp
-import rsp.cmd

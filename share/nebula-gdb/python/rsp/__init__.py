@@ -1,7 +1,16 @@
 import os
+import sys
 import gdb
 import struct
 import resource
+
+if sys.version_info[0] < 3:
+    pass
+elif sys.version_info[0] == 3 and sys.version_info[1] <= 4:
+    from imp import reload
+else:
+    from importlib import reload
+
 
 gdb.mmaps = []
 
@@ -157,3 +166,9 @@ def is_str_at_addr(addr):
         n = n + 1
         s = s + 1
     return n > 2, n
+
+
+if 'rsp.cmd' in sys.modules:
+    reload(rsp.cmd)
+else:
+    import rsp.cmd

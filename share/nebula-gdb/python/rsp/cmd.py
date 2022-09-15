@@ -1,6 +1,17 @@
 import re
 import gdb
-from . import *
+import rsp
+from rsp import *
+
+class ReloadCommand(gdb.Command):
+    '''Reload the rsp package'''
+    def __init__(self):
+        super(ReloadCommand, self).__init__('rsp-reload', gdb.COMMAND_USER)
+
+    def invoke(self, args, is_tty):
+        rsp.reload(rsp)
+
+ReloadCommand()
 
 class ShowStackCommand(gdb.Command):
     '''Show various info about the current stack'''
@@ -23,6 +34,8 @@ class ShowStackCommand(gdb.Command):
         elif is_arm64():
             top = reg('sp')
         print("bottom: 0x%x, top: 0x%x, size: %d, usage: %d" % (end, top, end - start, end - top))
+
+ShowStackCommand()
 
 
 class ExamineRangeCommand(gdb.Command):
@@ -86,6 +99,9 @@ class ExamineRangeCommand(gdb.Command):
                     print(out)
                     print(len(out))
 
+ExamineRangeCommand()
+
+
 class ExamineStackCommand(gdb.Command):
     '''Examine contents in the current stack'''
     def __init__(self):
@@ -107,6 +123,7 @@ class ExamineStackCommand(gdb.Command):
 
         gdb.execute('xrange %d %d' % (top, bottom))
 
+ExamineStackCommand()
 
 class ShowAssemblyTipsCommand(gdb.Command):
     '''Show brief assembly tips of arm or x86'''
@@ -257,9 +274,4 @@ REGISTERS
         '''
         print(tips.strip())
 
-# Regisger commands
-ShowStackCommand()
-ExamineRangeCommand()
-ExamineStackCommand()
 ShowAssemblyTipsCommand()
-
