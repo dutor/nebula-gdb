@@ -335,6 +335,54 @@ class PrintStdVectorCommand(gdb.Command):
             addr = int(value.address)
         s, e, f = x(addr, 'Q', 3)
         print(f'start: {s:#x}, size: +{e-s}, cap: +{f-s}')
-        pass
 
 PrintStdVectorCommand()
+
+
+class PrintStdHashtableCommand(gdb.Command):
+    '''Print fields of std::unordered_map/set, useful if no debuginfo'''
+    def __init__(self):
+        super(PrintStdHashtableCommand, self).__init__('phash-table', gdb.COMMAND_USER)
+
+    @catch
+    def invoke(self, args, is_tty):
+        args = args.split()
+        if len(args) != 1:
+            print('phashtable <addr>')
+            return
+        value = gdb.parse_and_eval(args[0])
+        tcode = value.type.code
+        if tcode == gdb.TYPE_CODE_PTR or tcode == gdb.TYPE_CODE_INT:
+            addr = int(value)
+        else:
+            addr = int(value.address)
+        buckets, nbuckets, _, size = x(addr, 'Q', 4)
+        load_factor = x(addr + 32, 'f', 1)[0]
+        print(f'buckets: {buckets:#x}, bucket count: {nbuckets}, size: {size}, load factor: {load_factor}')
+
+PrintStdHashtableCommand()
+
+
+class PrintStdSharedPtrcommand(gdb.Command):
+    '''Print fields of std::shared_ptr, useful if no debuginfo'''
+    def __init__(self):
+        super(PrintStdSharedPtrcommand, self).__init__('pshared-ptr', gdb.COMMAND_USER)
+
+    @catch
+    def invoke(self, args, is_tty):
+        args = args.split()
+        if len(args) != 1:
+            print('pshared-ptr <addr>')
+            return
+
+        value = gdb.parse_and_eval(args[0])
+        tcode = value.type.code
+        if tcode == gdb.TYPE_CODE_PTR or tcode == gdb.TYPE_CODE_INT:
+            addr = int(value)
+        else:
+            addr = int(value.address)
+        ptr, refptr = x(addr, 'Q', 2)
+        use, weak = x(refptr + 8, 'I', 2)
+        print(f'get(): {ptr:#x}, use count: {use}, weak count: {weak}')
+
+PrintStdSharedPtrcommand()
