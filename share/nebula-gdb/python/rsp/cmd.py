@@ -386,3 +386,75 @@ class PrintStdSharedPtrcommand(gdb.Command):
         print(f'get(): {ptr:#x}, use count: {use}, weak count: {weak}')
 
 PrintStdSharedPtrcommand()
+
+
+class PrintSyscallCommand(gdb.Command):
+    ''''''
+    def __init__(self):
+        super(PrintSyscallCommand, self).__init__('psyscall', gdb.COMMAND_USER)
+
+    @catch
+    def invoke(self, args, is_tty):
+        args = args.split()
+        if len(args) > 1:
+            print('psyscall [name or num]')
+            return
+
+        if len(args) == 0:
+            key = None
+        else:
+            try:
+                key = int(args[0], 10)
+            except:
+                try:
+                    key = int(args[0], 16)
+                except:
+                    key = args[0]
+
+        if not hasattr(gdb, 'syscalls'):
+            self.load()
+
+        if key is None:
+            keys = [key for key in gdb.syscalls.keys() if type(key) is int]
+            keys.sort()
+            nrows = (len(keys) + 1) / 2
+            nrows = int(nrows)
+            c1 = keys[:nrows]
+            c2 = keys[nrows:]
+            i = 0
+            while i < nrows:
+                if i <= len(c2) - 1:
+                    print('%3d %-25s %3d %-25s' % (c1[i], gdb.syscalls[c1[i]], c2[i], gdb.syscalls[c2[i]]))
+                else:
+                    print('%3d %-25s' % (c1[i], gdb.syscalls[c1[i]]))
+                i = i + 1
+            return
+
+        try:
+            print(gdb.syscalls[key])
+        except:
+            if type(key) is int:
+                return
+            for akey in gdb.syscalls.keys():
+                if type(akey) is str and key in akey:
+                    print('%3d %-25s' % (gdb.syscalls[akey], akey))
+
+    def load(self):
+        gdb.syscalls = {}
+        import xml.etree.ElementTree as ET
+        fname = gdb.PYTHONDIR + '/../syscalls/'
+        if is_x64():
+            fname = fname + 'amd64-linux.xml'
+        elif is_arm64():
+            fname = fname + 'aarch64-linux.xml'
+
+        xml = ET.parse(fname)
+        xml = xml.getroot()
+        for syscall in xml:
+            name = syscall.get('name')
+            num = int(syscall.get('number'))
+            gdb.syscalls[name] = num
+            gdb.syscalls[num] = name
+
+
+PrintSyscallCommand()
