@@ -3,16 +3,6 @@ import gdb
 import rsp
 from rsp import *
 
-class ReloadCommand(gdb.Command):
-    '''Reload the rsp package'''
-    def __init__(self):
-        super(ReloadCommand, self).__init__('rsp-reload', gdb.COMMAND_USER)
-
-    def invoke(self, args, is_tty):
-        rsp.reload(rsp)
-
-ReloadCommand()
-
 def active(invoke):
     def wrapper(*args, **kwargs):
         if not is_active():
@@ -30,6 +20,17 @@ def catch(invoke):
             print(e)
 
     return wrapper
+
+class ReloadCommand(gdb.Command):
+    '''Reload the rsp package'''
+    def __init__(self):
+        super(ReloadCommand, self).__init__('rsp-reload', gdb.COMMAND_USER)
+
+    def invoke(self, args, is_tty):
+        rsp.reload(rsp)
+
+ReloadCommand()
+
 
 class ShowStackCommand(gdb.Command):
     '''Show various info about the current stack'''
@@ -88,18 +89,33 @@ class ExamineRangeCommand(gdb.Command):
             return
 
         addrs = x(start, 'Q', (end - start) / 8)
-        addrs = [addr for addr in addrs if is_valid_addr(addr)]
+        addrs = [(i * 8, addr) for i, addr in enumerate(addrs) if is_valid_addr(addr)]
+
+        if len(addrs) == 0:
+            return
         addrs.reverse()
-        for addr in addrs:
+
+        maxoffset = addrs[0][0]
+        print(maxoffset)
+        offset_width = 2
+        while maxoffset != 0:
+            offset_width = offset_width + 1
+            maxoffset = maxoffset >> 4
+
+        for i,addr in addrs:
+            line = f'{start:#x}+{i:#0{offset_width}x}: {addr:#x}'
+            to_print = False
             out = gdb.execute('info symbol 0x%x' % addr, to_string = True)
             out = out[:-1]
             ok, n = is_str_at_addr(addr)
+            string = None
             if ok:
                 tail = ''
                 if n > 64:
                     n = 64
                     tail = '...'
-                print('0x%x: "%s"' % (addr, ''.join(c.decode() for c in x(addr, 'c', n)) + tail))
+                string = ' -> "' + ''.join(c.decode() for c in x(addr, 'c', n)) + tail + '"'
+                to_print = True
             if not 'No symbol' in out:
                 try:
                     if not hasattr(gdb, 'symbol_line_pattern'):
@@ -110,11 +126,18 @@ class ExamineRangeCommand(gdb.Command):
                     offset = match.group(2)
                     objfile = match.group(3)
                     if offset is None:
-                        print('0x%x: <%s>' % (addr, func))
+                        line = f'{line} -> <{func}>'
                     else:
-                        print('0x%x: <%s+%d>' % (addr, func, int(offset)))
+                        line = f'{line} -> <{func}+{int(offset):#x}>'
+                    to_print = True
                 except:
                     raise
+
+            if not string == None:
+                line = line + string
+
+            if to_print:
+                print(line)
 
 ExamineRangeCommand()
 
@@ -455,6 +478,5 @@ class PrintSyscallCommand(gdb.Command):
             num = int(syscall.get('number'))
             gdb.syscalls[name] = num
             gdb.syscalls[num] = name
-
 
 PrintSyscallCommand()

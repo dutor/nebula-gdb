@@ -176,3 +176,8 @@ if 'rsp.cmd' in sys.modules:
     reload(rsp.cmd)
 else:
     import rsp.cmd
+
+if 'rsp.filter' in sys.modules:
+    reload(rsp.filter)
+else:
+    import rsp.filter

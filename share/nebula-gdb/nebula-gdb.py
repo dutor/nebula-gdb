@@ -11,6 +11,8 @@ basics = [
     'set verbose off',
     'set python print-stack full',
     'set history save on',
+    'set history size 4096',
+    'set history remove-duplicates unlimited',
     'set history filename ' + os.environ['HOME'] + '/.gdb_history',
 ]
 
